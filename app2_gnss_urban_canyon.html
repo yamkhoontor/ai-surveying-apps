@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App 2 — GNSS Urban Canyon</title>
+<style>
+:root{--ink:#1d2329;--muted:#5b6670;--line:#d5dade;--bg:#f6f7f8;--card:#ffffff;--accent:#1f5f8b;--accent-soft:#e3eef6;--warn:#a23b2a;--warn-soft:#f8e6e2;--ok:#2e6b3a;--ok-soft:#e4f1e6}
+@media (prefers-color-scheme: dark){:root{--ink:#e6e9ec;--muted:#a3adb6;--line:#3a434b;--bg:#161a1e;--card:#1f252a;--accent:#7fb6dc;--accent-soft:#1d3342;--warn:#f0907e;--warn-soft:#3b2420;--ok:#8fcf9a;--ok-soft:#1f3324}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{padding:18px 16px 8px;max-width:1100px;margin:0 auto}
+header .kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header h1{margin:4px 0 4px;font-size:24px;line-height:1.2}
+header p{margin:0;color:var(--muted);max-width:760px}
+main{max-width:1100px;margin:0 auto;padding:8px 16px 32px;display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px}
+@media (max-width:820px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input[type=number],input[type=text],textarea,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:14px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+textarea{min-height:120px;resize:vertical}
+input[type=range]{width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+.check{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:14px;color:var(--ink)}
+.check input{width:auto}
+button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 14px;font:600 14px system-ui,sans-serif;cursor:pointer}
+button.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stat .k{font-size:12px;color:var(--muted)}.stat .v{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+.stat.warn{background:var(--warn-soft);border-color:var(--warn)}.stat.warn .v{color:var(--warn)}
+.stat.ok{background:var(--ok-soft);border-color:var(--ok)}.stat.ok .v{color:var(--ok)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600}
+tr.flag td{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.msg{padding:8px 10px;border-radius:7px;margin:8px 0;font-size:14px}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}.msg.ok{background:var(--ok-soft);color:var(--ok)}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--muted);font:11px system-ui,sans-serif}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tabs button{flex:1}
+footer{max-width:1100px;margin:0 auto;padding:0 16px 24px;color:var(--muted);font-size:12px}
+a{color:var(--accent)}
+</style></head>
+<body>
+<header><div class="kicker">AI for Surveying and Geomatics · App 2 · Chapter 9</div>
+<h1>GNSS Urban Canyon</h1><p>Satellites hidden behind buildings can still be 'heard' by reflection, with ranges several metres too long. Train a classifier to spot these non-line-of-sight (NLOS) signals, then see whether excluding them improves the least squares position.</p></header>
+
+<style>
+.small{font-size:12.5px;color:var(--muted)} #busy{display:none}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media (max-width:700px){.twocol{grid-template-columns:1fr}}
+.cm td{text-align:center}
+</style>
+<main>
+<section>
+ <div class="card">
+  <h2>1 · Where the classifier learns</h2>
+  <label>Training streets</label>
+  <select id="trainStreet"><option value="open">Open: wide streets, low buildings</option><option value="typ" selected>Typical city streets</option><option value="deep">Deep canyons: narrow, tall</option><option value="mix">A mixture of all three</option></select>
+  <label>Training epochs (each gives about 15 to 20 signals): <b id="neV">600</b></label>
+  <input type="range" id="ne" min="20" max="2000" step="20" value="600">
+  <label>Features the classifier may use</label>
+  <label class="check"><input type="checkbox" class="ft" data-f="0" checked> Signal strength, C/N0</label>
+  <label class="check"><input type="checkbox" class="ft" data-f="1" checked> Satellite elevation</label>
+  <label class="check"><input type="checkbox" class="ft" data-f="2" checked> Residual in a least squares fix</label>
+  <label>Method</label>
+  <select id="method"><option value="rf">Random forest</option><option value="lr">Logistic regression</option></select>
+  <div class="row" style="margin-top:10px"><button id="train">Train classifier</button></div>
+ </div>
+ <div class="card" style="margin-top:12px">
+  <h2>2 · Walk a street</h2>
+  <label>Test street</label>
+  <select id="testStreet"><option value="open">Open</option><option value="typ" selected>Typical</option><option value="deep">Deep canyon</option></select>
+  <label>Flag a signal as NLOS when the AI's probability exceeds <b id="thV">0.50</b></label>
+  <input type="range" id="th" min="0.05" max="0.95" step="0.05" value="0.5">
+  <div class="row" style="margin-top:10px"><button id="walk">Walk 300 epochs</button></div>
+  <div id="busy" class="msg ok">Working…</div>
+ </div>
+ <div class="card" style="margin-top:12px">
+  <h2>Experiment log</h2>
+  <table id="log" style="font-size:12.5px"><thead><tr><th>#</th><th>Train</th><th>Test</th><th>Feat.</th><th>Class. acc.</th><th>Median AI</th><th>Median all</th></tr></thead><tbody></tbody></table>
+  <p class="small">Features: C = C/N0, E = elevation, R = residual. Try: C/N0 only; then all three features; then train on open streets and walk a deep canyon.</p>
+ </div>
+</section>
+<section>
+ <div class="card">
+  <h2>The classifier on unseen signals</h2>
+  <div class="stats" id="cstats"><div class="stat"><div class="k">Status</div><div class="v" style="font-size:15px">Not trained yet</div></div></div>
+  <svg id="scat"></svg>
+  <p class="small">Each dot is one signal from test streets: elevation against C/N0. Blue: truly direct (LOS); red: truly reflected only (NLOS). Black rings: signals the AI got wrong.</p>
+ </div>
+ <div class="card" style="margin-top:12px">
+  <h2>Does it improve the position?</h2>
+  <div class="stats" id="pstats"></div>
+  <svg id="cdf"></svg>
+  <p class="small">Cumulative distribution of horizontal errors over the walk: the further left and higher a curve, the better.</p>
+ </div>
+ <div class="card" style="margin-top:12px">
+  <h2>One epoch in the street</h2>
+  <label>Epoch <b id="epV">1</b></label><input type="range" id="ep" min="0" max="299" value="0">
+  <div class="twocol"><svg id="sky"></svg><svg id="sect"></svg></div>
+  <p class="small" id="epInfo"></p>
+ </div>
+</section>
+</main>
+<footer>Companion app to <i>AI for Surveying and Geomatics: A Practical Guide for Surveyors and Engineers</i> by Yam Khoon Tor. © 2026 Yam Khoon Tor. For study and illustration; check all results independently. Works offline. <a href="index.html">All apps</a></footer>
+<script>
+const $=s=>document.querySelector(s);
+const fmt=(x,d=3)=>(isFinite(x)?Number(x).toFixed(d):'—');
+function parseRows(txt,ncol){const out=[];for(const line of txt.split(/\n/)){const t=line.trim();if(!t||t.startsWith('#'))continue;const p=t.split(/[\s,;\t]+/).map(Number);if(p.length>=ncol&&p.slice(0,ncol).every(isFinite))out.push(p.slice(0,ncol));}return out;}
+function nice(lo,hi,n){if(!isFinite(lo)||!isFinite(hi))return[0,1];if(lo===hi){lo-=1;hi+=1}const span=hi-lo,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0))),r=step0/mag,step=(r<1.5?1:r<3?2:r<7?5:10)*mag;const ticks=[];for(let v=Math.ceil(lo/step)*step;v<=hi+1e-9*step;v+=step)ticks.push(+v.toFixed(10));return ticks;}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+// series: [{pts:[[x,y]...], type:'line'|'scatter', dash, color, label, r}] ; hlines:[{y,label,dash}] ; vlines
+function plot(svg,series,o={}){const W=640,H=o.h||320,m={l:56,r:16,t:14,b:40};svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+ let xs=[],ys=[];series.forEach(s=>s.pts.forEach(p=>{if(isFinite(p[0])&&isFinite(p[1])){xs.push(p[0]);ys.push(p[1]);}}));(o.hlines||[]).forEach(h=>ys.push(h.y));(o.vlines||[]).forEach(v=>xs.push(v.x));
+ let x0=o.xmin??Math.min(...xs),x1=o.xmax??Math.max(...xs),y0=o.ymin??Math.min(...ys),y1=o.ymax??Math.max(...ys);if(!xs.length){x0=0;x1=1;y0=0;y1=1}
+ const py=(y1-y0)*0.08||1,px=(x1-x0)*0.03||1;if(o.ymin===undefined)y0-=py;if(o.ymax===undefined)y1+=py;if(o.xmin===undefined)x0-=px;if(o.xmax===undefined)x1+=px;
+ const logy=o.logy;const ty=v=>logy?Math.log10(Math.max(v,1e-12)):v;let Y0=ty(y0),Y1=ty(y1);if(logy){Y0=Math.floor(Math.log10(Math.max(Math.min(...ys.filter(v=>v>0)),1e-12)));Y1=Math.ceil(Math.log10(Math.max(...ys)))}
+ const X=x=>m.l+(x-x0)/(x1-x0)*(W-m.l-m.r),Yp=y=>H-m.b-(ty(y)-Y0)/(Y1-Y0)*(H-m.t-m.b);
+ const ink=css('--ink'),line=css('--line'),acc=css('--accent');let g=`<rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="none" stroke="${line}"/>`;
+ nice(x0,x1,6).forEach(t=>{const xx=X(t);if(xx<m.l-0.5||xx>W-m.r+0.5)return;g+=`<line x1="${xx}" x2="${xx}" y1="${m.t}" y2="${H-m.b}" stroke="${line}" stroke-width="0.5"/><text x="${xx}" y="${H-m.b+15}" text-anchor="middle">${+t.toPrecision(6)}</text>`});
+ if(logy){for(let e=Y0;e<=Y1;e++){const yy=H-m.b-(e-Y0)/(Y1-Y0)*(H-m.t-m.b);g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="${line}" stroke-width="0.5"/><text x="${m.l-6}" y="${yy+4}" text-anchor="end">1e${e}</text>`}}
+ else nice(y0,y1,5).forEach(t=>{const yy=Yp(t);if(yy<m.t-0.5||yy>H-m.b+0.5)return;g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="${line}" stroke-width="0.5"/><text x="${m.l-6}" y="${yy+4}" text-anchor="end">${+t.toPrecision(6)}</text>`});
+ if(o.xlabel)g+=`<text x="${(W+m.l)/2}" y="${H-6}" text-anchor="middle">${o.xlabel}</text>`;if(o.ylabel)g+=`<text transform="translate(14 ${(H-m.b+m.t)/2}) rotate(-90)" text-anchor="middle">${o.ylabel}</text>`;
+ (o.hlines||[]).forEach(h=>{const yy=Yp(h.y);g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="${h.color||ink}" stroke-dasharray="${h.dash||''}" stroke-width="1.3"/><text x="${W-m.r-4}" y="${yy-4}" text-anchor="end" style="fill:${h.color||ink}">${h.label||''}</text>`});
+ (o.vlines||[]).forEach(v=>{const xx=X(v.x);g+=`<line x1="${xx}" x2="${xx}" y1="${m.t}" y2="${H-m.b}" stroke="${v.color||line}" stroke-dasharray="${v.dash||'3 3'}"/><text x="${xx+4}" y="${m.t+12}">${v.label||''}</text>`});
+ g+=`<clipPath id="c${svg.id}"><rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}"/></clipPath><g clip-path="url(#c${svg.id})">`;
+ series.forEach(s=>{const col=s.color||acc;const P=s.pts.filter(p=>isFinite(p[0])&&isFinite(p[1]));if(s.type==='line'){if(P.length>1)g+=`<polyline fill="none" stroke="${col}" stroke-width="${s.w||2}" stroke-dasharray="${s.dash||''}" points="${P.map(p=>X(p[0])+','+Yp(p[1])).join(' ')}"/>`}
+ else P.forEach(p=>{g+=s.square?`<rect x="${X(p[0])-(s.r||4)}" y="${Yp(p[1])-(s.r||4)}" width="${2*(s.r||4)}" height="${2*(s.r||4)}" fill="${s.fill||'none'}" stroke="${col}" stroke-width="1.6"/>`:`<circle cx="${X(p[0])}" cy="${Yp(p[1])}" r="${s.r||4}" fill="${s.fill||'none'}" stroke="${col}" stroke-width="1.6"/>`})});
+ g+='</g>';let ly=m.t+14;series.filter(s=>s.label).forEach(s=>{g+=`<line x1="${m.l+10}" x2="${m.l+30}" y1="${ly-4}" y2="${ly-4}" stroke="${s.color||acc}" stroke-width="2" stroke-dasharray="${s.dash||''}"/><text x="${m.l+36}" y="${ly}" style="fill:${ink}">${s.label}</text>`;ly+=16});
+ svg.innerHTML=g;return {X,Y:Yp};}
+function dms(deg){deg=((deg%360)+360)%360;let d=Math.floor(deg),mf=(deg-d)*60,mm=Math.floor(mf),s=(mf-mm)*60;if(s>=59.95){s=0;mm++}if(mm>=60){mm=0;d++}return `${d}° ${String(mm).padStart(2,'0')}′ ${s.toFixed(1).padStart(4,'0')}″`;}
+
+
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let R=mulberry(1);const U=(a,b)=>a+(b-a)*R();function G(){let u=0;while(!u)u=R();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*R())}
+const RS=20200000,D=Math.PI/180;
+const STREETS={open:{w:[30,50],h:[5,20]},typ:{w:[16,36],h:[10,45]},deep:{w:[12,20],h:[40,90]}};
+function canyon(kind){if(kind==='mix')kind=['open','typ','deep'][Math.floor(R()*3)];const s=STREETS[kind];
+ const w=U(...s.w),off=U(-0.3,0.3)*w;return {dW:w/2+off,dE:w/2-off,hW:U(...s.h)*(R()>0.15),hE:U(...s.h)*(R()>0.15)}}
+function epoch(cy){const n=24,sats=[];
+ for(let k=0;k<n;k++){const az=U(0,2*Math.PI),el=Math.asin(U(Math.sin(5*D),1));const se=Math.sin(az);
+  const d=(se>0?cy.dE:cy.dW)/Math.max(Math.abs(se),1e-3),h=se>0?cy.hE:cy.hW,blocked=Math.tan(el)<h/d,dop=se>0?cy.dW:cy.dE;
+  const refl=blocked&&R()<0.5;const cn0los=30+18*Math.sin(el)+2*G();
+  const cn0=cn0los-(refl?U(6,14):0);const sig=0.4+3*Math.exp(-el/D/15);
+  let err=sig*G();const extra=2*dop*Math.cos(el)*Math.abs(se)+U(0,5);if(refl)err+=extra;
+  if(!blocked||refl)sats.push({az,el,nlos:refl,cn0,rho:RS+1500+err,blocked})}
+ return sats}
+function solve(S,w){let x=[0,0,0,0];
+ for(let it=0;it<6;it++){const N=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],b=[0,0,0,0];
+  S.forEach((s,i)=>{const sx=RS*Math.cos(s.el)*Math.sin(s.az),sy=RS*Math.cos(s.el)*Math.cos(s.az),sz=RS*Math.sin(s.el);
+   const r=Math.hypot(sx-x[0],sy-x[1],sz-x[2]);const a=[-(sx-x[0])/r,-(sy-x[1])/r,-(sz-x[2])/r,1],v=s.rho-(r+x[3]),wi=w?w[i]:1;
+   for(let p=0;p<4;p++){b[p]+=wi*a[p]*v;for(let q=0;q<4;q++)N[p][q]+=wi*a[p]*a[q]}});
+  const dx=gauss(N,b);for(let p=0;p<4;p++)x[p]+=dx[p]}
+ const res=S.map(s=>{const sx=RS*Math.cos(s.el)*Math.sin(s.az),sy=RS*Math.cos(s.el)*Math.cos(s.az),sz=RS*Math.sin(s.el);return s.rho-(Math.hypot(sx-x[0],sy-x[1],sz-x[2])+x[3])});
+ return {x,res}}
+function gauss(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+ for(let i=0;i<n;i++){let p=i;for(let k=i+1;k<n;k++)if(Math.abs(M[k][i])>Math.abs(M[p][i]))p=k;[M[i],M[p]]=[M[p],M[i]];
+  for(let k=i+1;k<n;k++){const f=M[k][i]/M[i][i];for(let j=i;j<=n;j++)M[k][j]-=f*M[i][j]}}
+ const x=new Array(n).fill(0);for(let i=n-1;i>=0;i--){let s=M[i][n];for(let j=i+1;j<n;j++)s-=M[i][j]*x[j];x[i]=s/M[i][i]}return x}
+function hdop(S){const N=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+ S.forEach(s=>{const a=[Math.cos(s.el)*Math.sin(s.az),Math.cos(s.el)*Math.cos(s.az),Math.sin(s.el),1];for(let p=0;p<4;p++)for(let q=0;q<4;q++)N[p][q]+=a[p]*a[q]});
+ const inv=[0,1].map(i=>gauss(N,[0,1,2,3].map(j=>j===i?1:0))[i]);return Math.sqrt(inv[0]+inv[1])}
+function featurise(S){const {x,res}=solve(S);S.forEach((s,i)=>{s.f=[s.cn0,s.el/D,Math.abs(res[i])]});return x}
+function dataset(kind,ne,seed){R=mulberry(seed);const X=[],y=[];
+ for(let e=0;e<ne;e++){const S=epoch(canyon(kind));if(S.length<6)continue;featurise(S);S.forEach(s=>{X.push(s.f);y.push(s.nlos?1:0)})}return {X,y}}
+
+// ------------------------------------------------ random forest (2 classes)
+function tree(X,y,idx,cols,depth,imp,rng){const n=idx.length;let c1=0;for(const i of idx)c1+=y[i];const p=c1/n,g0=2*p*(1-p);let best=null;
+ if(depth<12&&n>=10&&g0>1e-9){const m=Math.max(1,Math.round(Math.sqrt(cols.length)));const cand=[...cols].sort(()=>rng()-0.5).slice(0,m);
+  for(const f of cand){const s=idx.slice().sort((a,b)=>X[a][f]-X[b][f]);let l1=0;
+   for(let k=0;k<n-1;k++){l1+=y[s[k]];const nl=k+1,nr=n-nl;if(nl<5||nr<5)continue;const v=X[s[k]][f],v2=X[s[k+1]][f];if(v2-v<1e-9)continue;
+    const pl=l1/nl,pr=(c1-l1)/nr,g=(nl*2*pl*(1-pl)+nr*2*pr*(1-pr))/n;if(!best||g<best.g)best={g,f,t:(v+v2)/2}}}}
+ if(!best||best.g>=g0-1e-12)return {leaf:p};imp[best.f]+=n*(g0-best.g);
+ const L=[],Rr=[];for(const i of idx)(X[i][best.f]<=best.t?L:Rr).push(i);
+ return {f:best.f,t:best.t,l:tree(X,y,L,cols,depth+1,imp,rng),r:tree(X,y,Rr,cols,depth+1,imp,rng)}}
+function trainRF(X,y,cols){const rng=mulberry(5),imp=[0,0,0],T=[];const all=[...X.keys()];
+ const sub=all.length>6000?all.sort(()=>rng()-0.5).slice(0,6000):all;
+ for(let t=0;t<40;t++){const b=sub.map(()=>sub[Math.floor(rng()*sub.length)]);T.push(tree(X,y,b,cols,0,imp,rng))}
+ return {prob:f=>{let s=0;for(const t of T){let nd=t;while(nd.leaf===undefined)nd=f[nd.f]<=nd.t?nd.l:nd.r;s+=nd.leaf}return s/T.length}}}
+function trainLR(X,y,cols){const d=cols.length,mu=cols.map(c=>X.reduce((s,x)=>s+x[c],0)/X.length),sd=cols.map((c,j)=>Math.sqrt(X.reduce((s,x)=>s+(x[c]-mu[j])**2,0)/X.length)||1);
+ let w=new Array(d).fill(0),b=0;const n=X.length;
+ for(let it=0;it<400;it++){const gw=new Array(d).fill(0);let gb=0;
+  for(let i=0;i<n;i++){let z=b;for(let j=0;j<d;j++)z+=w[j]*(X[i][cols[j]]-mu[j])/sd[j];const p=1/(1+Math.exp(-z)),e=p-y[i];gb+=e;for(let j=0;j<d;j++)gw[j]+=e*(X[i][cols[j]]-mu[j])/sd[j]}
+  b-=0.5*gb/n;for(let j=0;j<d;j++)w[j]-=0.5*gw[j]/n}
+ return {prob:f=>{let z=b;for(let j=0;j<d;j++)z+=w[j]*(f[cols[j]]-mu[j])/sd[j];return 1/(1+Math.exp(-z))}}}
+
+// ------------------------------------------------ app state
+let model=null,cols=[0,1,2],test=null,walkRes=null,runs=0,trained=null;
+const busy=(on,m)=>{$('#busy').style.display=on?'block':'none';if(m)$('#busy').textContent=m};
+$('#ne').oninput=()=>$('#neV').textContent=$('#ne').value;
+$('#th').oninput=()=>{$('#thV').textContent=(+$('#th').value).toFixed(2);if(model)doWalk()};
+const C_LOS='#2e75b6',C_NLOS='#c0392b';
+function trainNow(){cols=[...document.querySelectorAll('.ft')].filter(c=>c.checked).map(c=>+c.dataset.f);if(!cols.length){busy(true,'Tick at least one feature.');setTimeout(()=>busy(false),2000);return}
+ busy(true,'Simulating training streets and training…');setTimeout(()=>{
+  const kind=$('#trainStreet').value,tr=dataset(kind,+$('#ne').value,1);
+  model=($('#method').value==='rf'?trainRF:trainLR)(tr.X,tr.y,cols);
+  test=dataset($('#testStreet').value,150,2);
+  let tp=0,tn=0,fp=0,fn=0;test.pred=test.X.map(f=>model.prob(f)>=+$('#th').value?1:0);
+  test.y.forEach((t,i)=>{const p=test.pred[i];if(t&&p)tp++;else if(!t&&!p)tn++;else if(p)fp++;else fn++});
+  const acc=(tp+tn)/test.y.length;trained={kind,acc,n:tr.y.length,nl:tr.y.reduce((a,b)=>a+b,0)};
+  const st=(k,v,c)=>`<div class="stat ${c||''}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  $('#cstats').innerHTML=st('Training signals',tr.y.length.toLocaleString())+st('NLOS in training',(100*trained.nl/tr.y.length).toFixed(0)+'%')+
+   st('Accuracy on unseen signals',(100*acc).toFixed(1)+'%',acc>0.95?'ok':acc<0.85?'warn':'')+st('NLOS caught (recall)',(100*tp/(tp+fn||1)).toFixed(0)+'%')+st('Good signals wrongly flagged',(100*fp/(fp+tn||1)).toFixed(0)+'%');
+  const pts=test.X.map((f,i)=>({f,t:test.y[i],ok:test.pred[i]===test.y[i]})).slice(0,1500);
+  plot($('#scat'),[{pts:pts.filter(p=>!p.t).map(p=>[p.f[1],p.f[0]]),type:'scatter',color:C_LOS,r:1.8,fill:C_LOS,label:'LOS'},
+   {pts:pts.filter(p=>p.t).map(p=>[p.f[1],p.f[0]]),type:'scatter',color:C_NLOS,r:1.8,fill:C_NLOS,label:'NLOS'},
+   {pts:pts.filter(p=>!p.ok).map(p=>[p.f[1],p.f[0]]),type:'scatter',color:'#000',r:4,label:'AI wrong'}],{xlabel:'Elevation (deg)',ylabel:'C/N0 (dB-Hz)',h:300});
+  doWalk(true);busy(false)},30)}
+$('#train').onclick=trainNow;
+function doWalk(log){if(!model){trainNow();return}
+ R=mulberry(5);const kind=$('#testStreet').value,th=+$('#th').value;const out={all:[],cls:[],ai:[],ora:[]};const eps=[];
+ for(let k=0;k<300;k++){const cy=canyon(kind);const S=epoch(cy);if(S.length<6){continue}
+  featurise(S);const x0=solve(S).x;const wc=S.map(s=>Math.sin(s.el)**2*Math.pow(10,(s.cn0-45)/10));const x1=solve(S,wc).x;
+  const p=S.map(s=>model.prob(s.f));const keep=S.filter((s,i)=>p[i]<th);let x2;
+  if(keep.length>=5&&hdop(keep)<5){x2=solve(keep,keep.map(s=>Math.sin(s.el)**2*Math.pow(10,(s.cn0-45)/10))).x}else x2=solve(S,wc.map((w,i)=>w*(1-p[i]+0.01))).x;
+  const good=S.filter(s=>!s.nlos);let x3;if(good.length>=5&&hdop(good)<5)x3=solve(good,good.map(s=>Math.sin(s.el)**2*Math.pow(10,(s.cn0-45)/10))).x;else x3=solve(S,wc.map((w,i)=>w*(S[i].nlos?0.01:1))).x;
+  const h=x=>Math.hypot(x[0],x[1]);out.all.push(h(x0));out.cls.push(h(x1));out.ai.push(h(x2));out.ora.push(h(x3));eps.push({cy,S,p,x0,x2})}
+ walkRes={out,eps};const med=a=>{const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)]},q95=a=>{const s=[...a].sort((x,y)=>x-y);return s[Math.floor(0.95*s.length)]};
+ const st=(k,v,c)=>`<div class="stat ${c||''}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+ $('#pstats').innerHTML=st('All signals, median',med(out.all).toFixed(1)+' m','warn')+st('Classical weighting',med(out.cls).toFixed(1)+' m')+
+  st('AI flags NLOS',med(out.ai).toFixed(1)+' m',med(out.ai)<med(out.cls)?'ok':'warn')+st('Perfect knowledge',med(out.ora).toFixed(1)+' m');
+ const cdf=a=>{const s=[...a].sort((x,y)=>x-y);return s.map((v,i)=>[Math.min(v,40),(i+1)/s.length])};
+ plot($('#cdf'),[{pts:cdf(out.all),type:'line',color:'#a23b2a',label:'All signals, equal weight'},{pts:cdf(out.cls),type:'line',color:'#e0a030',label:'Classical weighting (elevation, C/N0)'},
+  {pts:cdf(out.ai),type:'line',color:'#2e75b6',w:2.6,label:'AI: exclude or down-weight NLOS'},{pts:cdf(out.ora),type:'line',color:'#2e6b3a',dash:'5 4',label:'Perfect knowledge'}],
+  {xlabel:'Horizontal error (m)',ylabel:'Fraction of epochs',xmin:0,xmax:40,ymin:0,ymax:1,h:300});
+ $('#ep').max=eps.length-1;showEpoch();
+ if(log!==false){runs++;const fe=cols.map(c=>['C','E','R'][c]).join('');
+  $('#log tbody').insertAdjacentHTML('afterbegin',`<tr><td>${runs}</td><td>${trained.kind}</td><td>${kind}</td><td>${fe}</td><td>${(100*trained.acc).toFixed(1)}%</td><td>${med(out.ai).toFixed(1)} m</td><td>${med(out.all).toFixed(1)} m</td></tr>`)}
+ window.lastResult={acc:trained.acc,medAll:med(out.all),medCls:med(out.cls),medAI:med(out.ai),medOra:med(out.ora),p95AI:q95(out.ai)};}
+$('#walk').onclick=()=>{busy(true,'Walking…');setTimeout(()=>{doWalk();busy(false)},20)};
+$('#ep').oninput=showEpoch;
+function showEpoch(){if(!walkRes)return;const k=+$('#ep').value;$('#epV').textContent=k+1;const e=walkRes.eps[k];if(!e)return;const th=+$('#th').value;
+ const W=320,H=320,cx=160,cy=160,r0=140;let g=`<circle cx="${cx}" cy="${cy}" r="${r0}" fill="rgba(120,130,140,0.28)" stroke="${css('--line')}"/>`;let g2=`<circle cx="${cx}" cy="${cy}" r="${r0*2/3}" fill="none" stroke="${css('--line')}"/><circle cx="${cx}" cy="${cy}" r="${r0/3}" fill="none" stroke="${css('--line')}"/>`;
+ // blocked sky region from the two facades
+ let mask='';for(let a=0;a<=360;a+=3){const az=a*D,se=Math.sin(az),d=(se>0?e.cy.dE:e.cy.dW)/Math.max(Math.abs(se),1e-3),h=se>0?e.cy.hE:e.cy.hW,mel=Math.atan(h/d),rr=r0*(1-mel/(Math.PI/2));mask+=`${cx+rr*Math.sin(az)},${cy-rr*Math.cos(az)} `}
+ g+=`<polygon points="${mask}" fill="${css('--card')}" stroke="${css('--muted')}" stroke-dasharray="3 3"/>`+g2;
+ g+=`<text x="${cx-4}" y="12">N</text><text x="${W-12}" y="${cy+4}">E</text>`;
+ e.S.forEach((s,i)=>{const rr=r0*(1-s.el/(Math.PI/2)),x=cx+rr*Math.sin(s.az),y=cy-rr*Math.cos(s.az),flag=e.p[i]>=th;
+  g+=s.nlos?`<path d="M${x-5},${y-5}L${x+5},${y+5}M${x-5},${y+5}L${x+5},${y-5}" stroke="${C_NLOS}" stroke-width="2.2"/>`:`<circle cx="${x}" cy="${y}" r="5" fill="${C_LOS}"/>`;
+  if(flag)g+=`<circle cx="${x}" cy="${y}" r="9" fill="none" stroke="#000" stroke-width="1.4"/>`});
+ const sky=$('#sky');sky.setAttribute('viewBox',`0 0 ${W} ${H}`);sky.innerHTML=g;
+ // cross-section
+ const sw=e.cy.dW+e.cy.dE,sc=280/Math.max(sw+20,60),hmax=Math.max(e.cy.hW,e.cy.hE,20),vs=250/Math.max(hmax,60);let s2='';const base=290,mid=20+(10+e.cy.dW)*sc;
+ s2+=`<line x1="10" x2="310" y1="${base}" y2="${base}" stroke="${css('--muted')}"/>`;
+ s2+=`<rect x="${mid-e.cy.dW*sc-60}" y="${base-e.cy.hW*vs}" width="60" height="${e.cy.hW*vs}" fill="${css('--line')}"/>`;
+ s2+=`<rect x="${mid+e.cy.dE*sc}" y="${base-e.cy.hE*vs}" width="60" height="${e.cy.hE*vs}" fill="${css('--line')}"/>`;
+ s2+=`<circle cx="${mid}" cy="${base-4}" r="4" fill="${css('--accent')}"/><text x="${mid-30}" y="${base+16}">receiver</text>`;
+ s2+=`<text x="12" y="16">West ${e.cy.hW.toFixed(0)} m high, ${e.cy.dW.toFixed(0)} m away</text><text x="12" y="32">East ${e.cy.hE.toFixed(0)} m high, ${e.cy.dE.toFixed(0)} m away</text>`;
+ const sect=$('#sect');sect.setAttribute('viewBox','0 0 320 320');sect.innerHTML=s2;
+ const nN=e.S.filter(s=>s.nlos).length,nF=e.p.filter(v=>v>=th).length;
+ $('#epInfo').innerHTML=`${e.S.length} signals received, <b>${nN}</b> truly NLOS (red crosses), <b>${nF}</b> flagged by the AI (black rings). Horizontal error: all signals <b>${Math.hypot(e.x0[0],e.x0[1]).toFixed(1)} m</b>, with the AI <b>${Math.hypot(e.x2[0],e.x2[1]).toFixed(1)} m</b>. Grey sky is hidden behind the buildings; the white area is open sky.`}
+
+</script></body></html>

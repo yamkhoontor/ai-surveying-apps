@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App 3 — Learn the Normal</title>
+<style>
+:root{--ink:#1d2329;--muted:#5b6670;--line:#d5dade;--bg:#f6f7f8;--card:#ffffff;--accent:#1f5f8b;--accent-soft:#e3eef6;--warn:#a23b2a;--warn-soft:#f8e6e2;--ok:#2e6b3a;--ok-soft:#e4f1e6}
+@media (prefers-color-scheme: dark){:root{--ink:#e6e9ec;--muted:#a3adb6;--line:#3a434b;--bg:#161a1e;--card:#1f252a;--accent:#7fb6dc;--accent-soft:#1d3342;--warn:#f0907e;--warn-soft:#3b2420;--ok:#8fcf9a;--ok-soft:#1f3324}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{padding:18px 16px 8px;max-width:1100px;margin:0 auto}
+header .kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header h1{margin:4px 0 4px;font-size:24px;line-height:1.2}
+header p{margin:0;color:var(--muted);max-width:760px}
+main{max-width:1100px;margin:0 auto;padding:8px 16px 32px;display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:16px}
+@media (max-width:820px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input[type=number],input[type=text],textarea,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:14px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+textarea{min-height:120px;resize:vertical}
+input[type=range]{width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+.check{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:14px;color:var(--ink)}
+.check input{width:auto}
+button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 14px;font:600 14px system-ui,sans-serif;cursor:pointer}
+button.secondary{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stat .k{font-size:12px;color:var(--muted)}.stat .v{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+.stat.warn{background:var(--warn-soft);border-color:var(--warn)}.stat.warn .v{color:var(--warn)}
+.stat.ok{background:var(--ok-soft);border-color:var(--ok)}.stat.ok .v{color:var(--ok)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600}
+tr.flag td{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.msg{padding:8px 10px;border-radius:7px;margin:8px 0;font-size:14px}
+.msg.warn{background:var(--warn-soft);color:var(--warn)}.msg.ok{background:var(--ok-soft);color:var(--ok)}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--muted);font:11px system-ui,sans-serif}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tabs button{flex:1}
+footer{max-width:1100px;margin:0 auto;padding:0 16px 24px;color:var(--muted);font-size:12px}
+a{color:var(--accent)}
+</style></head>
+<body>
+<header><div class="kicker">AI for Surveying and Geomatics · App 3 · Chapter 10</div>
+<h1>Learn the Normal</h1><p>A structure breathes with the temperature every day. Let a model learn each prism's normal daily behaviour from the weeks before excavation, then watch what is left: real movement, measured against the Alert and Work Suspension Levels.</p></header>
+
+<style>.small{font-size:12.5px;color:var(--muted)} #busy{display:none} td.hit{color:var(--warn);font-weight:650} td.good{color:var(--ok);font-weight:650}</style>
+<main>
+<section>
+ <div class="card">
+  <h2>1 · The site</h2>
+  <p class="small">Eight prisms on a building beside an excavation, read every hour for 70 days by a robotic total station. Excavation starts on day 45. Prisms 3, 4 and 5 then settle; prism 6 drops suddenly on day 58. The others do not move.</p>
+  <label>Thermal sensitivity of the structure: <b id="thV">1.0</b>×</label><input type="range" id="th" min="0.5" max="2.5" step="0.1" value="1">
+  <label>Measurement noise: <b id="nzV">1.0</b>×</label><input type="range" id="nz" min="0.5" max="3" step="0.1" value="1">
+  <label>Size of the real movement: <b id="mvV">1.0</b>×</label><input type="range" id="mv" min="0" max="2" step="0.1" value="1">
+ </div>
+ <div class="card" style="margin-top:12px">
+  <h2>2 · Learn the normal</h2>
+  <label>Learning period (before excavation): first <b id="bdV">30</b> days</label><input type="range" id="bd" min="5" max="44" step="1" value="30">
+  <label>Model</label>
+  <select id="method"><option value="ls">Least squares (straight-line thermal model)</option><option value="nn" selected>Neural network (one hidden layer)</option></select>
+  <div class="row"><div><label>Alert Level (mm)</label><input type="number" id="al" value="-6" step="0.5"></div><div><label>Work Suspension Level (mm)</label><input type="number" id="wsl" value="-10" step="0.5"></div></div>
+  <div class="row" style="margin-top:10px"><button id="run">Learn and monitor</button></div>
+  <div id="busy" class="msg ok">Working…</div>
+  <p class="small">Trigger levels are illustrative; use those in your monitoring plan.</p>
+ </div>
+ <div class="card" style="margin-top:12px">
+  <h2>All prisms: when was the Alert Level reached?</h2>
+  <div style="overflow-x:auto"><table id="tbl"></table></div>
+  <p class="small">Day on which each method first crossed the Alert Level. 'True' is the real movement, which the simulation knows. Red: an alarm with no real movement behind it, or before it. 'Step' is a sudden-change flag on the AI track.</p>
+ </div>
+</section>
+<section>
+ <div class="card">
+  <h2>One prism</h2>
+  <label>Prism</label><select id="prism"></select>
+  <div class="stats" id="stats"></div>
+  <svg id="ts"></svg>
+  <p class="small">Grey: raw hourly readings. Blue: the reading minus the learned normal, after a 6-hour running median (the AI's estimate of real movement). Dashed: the true movement. The vertical line marks the end of the learning period.</p>
+ </div>
+ <div class="card" style="margin-top:12px">
+  <h2>What the model learned (learning period)</h2>
+  <svg id="loop"></svg>
+  <p class="small">Reading against site air temperature for the selected prism. The cloud is not a straight line: the structure lags behind the air and a joint closes on hot afternoons. The orange dots are the model's prediction for the same hours.</p>
+ </div>
+</section>
+</main>
+<footer>Companion app to <i>AI for Surveying and Geomatics: A Practical Guide for Surveyors and Engineers</i> by Yam Khoon Tor. © 2026 Yam Khoon Tor. For study and illustration; check all results independently. Works offline. <a href="index.html">All apps</a></footer>
+<script>
+const $=s=>document.querySelector(s);
+const fmt=(x,d=3)=>(isFinite(x)?Number(x).toFixed(d):'—');
+function parseRows(txt,ncol){const out=[];for(const line of txt.split(/\n/)){const t=line.trim();if(!t||t.startsWith('#'))continue;const p=t.split(/[\s,;\t]+/).map(Number);if(p.length>=ncol&&p.slice(0,ncol).every(isFinite))out.push(p.slice(0,ncol));}return out;}
+function nice(lo,hi,n){if(!isFinite(lo)||!isFinite(hi))return[0,1];if(lo===hi){lo-=1;hi+=1}const span=hi-lo,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0))),r=step0/mag,step=(r<1.5?1:r<3?2:r<7?5:10)*mag;const ticks=[];for(let v=Math.ceil(lo/step)*step;v<=hi+1e-9*step;v+=step)ticks.push(+v.toFixed(10));return ticks;}
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+// series: [{pts:[[x,y]...], type:'line'|'scatter', dash, color, label, r}] ; hlines:[{y,label,dash}] ; vlines
+function plot(svg,series,o={}){const W=640,H=o.h||320,m={l:56,r:16,t:14,b:40};svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+ let xs=[],ys=[];series.forEach(s=>s.pts.forEach(p=>{if(isFinite(p[0])&&isFinite(p[1])){xs.push(p[0]);ys.push(p[1]);}}));(o.hlines||[]).forEach(h=>ys.push(h.y));(o.vlines||[]).forEach(v=>xs.push(v.x));
+ let x0=o.xmin??Math.min(...xs),x1=o.xmax??Math.max(...xs),y0=o.ymin??Math.min(...ys),y1=o.ymax??Math.max(...ys);if(!xs.length){x0=0;x1=1;y0=0;y1=1}
+ const py=(y1-y0)*0.08||1,px=(x1-x0)*0.03||1;if(o.ymin===undefined)y0-=py;if(o.ymax===undefined)y1+=py;if(o.xmin===undefined)x0-=px;if(o.xmax===undefined)x1+=px;
+ const logy=o.logy;const ty=v=>logy?Math.log10(Math.max(v,1e-12)):v;let Y0=ty(y0),Y1=ty(y1);if(logy){Y0=Math.floor(Math.log10(Math.max(Math.min(...ys.filter(v=>v>0)),1e-12)));Y1=Math.ceil(Math.log10(Math.max(...ys)))}
+ const X=x=>m.l+(x-x0)/(x1-x0)*(W-m.l-m.r),Yp=y=>H-m.b-(ty(y)-Y0)/(Y1-Y0)*(H-m.t-m.b);
+ const ink=css('--ink'),line=css('--line'),acc=css('--accent');let g=`<rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="none" stroke="${line}"/>`;
+ nice(x0,x1,6).forEach(t=>{const xx=X(t);if(xx<m.l-0.5||xx>W-m.r+0.5)return;g+=`<line x1="${xx}" x2="${xx}" y1="${m.t}" y2="${H-m.b}" stroke="${line}" stroke-width="0.5"/><text x="${xx}" y="${H-m.b+15}" text-anchor="middle">${+t.toPrecision(6)}</text>`});
+ if(logy){for(let e=Y0;e<=Y1;e++){const yy=H-m.b-(e-Y0)/(Y1-Y0)*(H-m.t-m.b);g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="${line}" stroke-width="0.5"/><text x="${m.l-6}" y="${yy+4}" text-anchor="end">1e${e}</text>`}}
+ else nice(y0,y1,5).forEach(t=>{const yy=Yp(t);if(yy<m.t-0.5||yy>H-m.b+0.5)return;g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="${line}" stroke-width="0.5"/><text x="${m.l-6}" y="${yy+4}" text-anchor="end">${+t.toPrecision(6)}</text>`});
+ if(o.xlabel)g+=`<text x="${(W+m.l)/2}" y="${H-6}" text-anchor="middle">${o.xlabel}</text>`;if(o.ylabel)g+=`<text transform="translate(14 ${(H-m.b+m.t)/2}) rotate(-90)" text-anchor="middle">${o.ylabel}</text>`;
+ (o.hlines||[]).forEach(h=>{const yy=Yp(h.y);g+=`<line x1="${m.l}" x2="${W-m.r}" y1="${yy}" y2="${yy}" stroke="${h.color||ink}" stroke-dasharray="${h.dash||''}" stroke-width="1.3"/><text x="${W-m.r-4}" y="${yy-4}" text-anchor="end" style="fill:${h.color||ink}">${h.label||''}</text>`});
+ (o.vlines||[]).forEach(v=>{const xx=X(v.x);g+=`<line x1="${xx}" x2="${xx}" y1="${m.t}" y2="${H-m.b}" stroke="${v.color||line}" stroke-dasharray="${v.dash||'3 3'}"/><text x="${xx+4}" y="${m.t+12}">${v.label||''}</text>`});
+ g+=`<clipPath id="c${svg.id}"><rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}"/></clipPath><g clip-path="url(#c${svg.id})">`;
+ series.forEach(s=>{const col=s.color||acc;const P=s.pts.filter(p=>isFinite(p[0])&&isFinite(p[1]));if(s.type==='line'){if(P.length>1)g+=`<polyline fill="none" stroke="${col}" stroke-width="${s.w||2}" stroke-dasharray="${s.dash||''}" points="${P.map(p=>X(p[0])+','+Yp(p[1])).join(' ')}"/>`}
+ else P.forEach(p=>{g+=s.square?`<rect x="${X(p[0])-(s.r||4)}" y="${Yp(p[1])-(s.r||4)}" width="${2*(s.r||4)}" height="${2*(s.r||4)}" fill="${s.fill||'none'}" stroke="${col}" stroke-width="1.6"/>`:`<circle cx="${X(p[0])}" cy="${Yp(p[1])}" r="${s.r||4}" fill="${s.fill||'none'}" stroke="${col}" stroke-width="1.6"/>`})});
+ g+='</g>';let ly=m.t+14;series.filter(s=>s.label).forEach(s=>{g+=`<line x1="${m.l+10}" x2="${m.l+30}" y1="${ly-4}" y2="${ly-4}" stroke="${s.color||acc}" stroke-width="2" stroke-dasharray="${s.dash||''}"/><text x="${m.l+36}" y="${ly}" style="fill:${ink}">${s.label}</text>`;ly+=16});
+ svg.innerHTML=g;return {X,Y:Yp};}
+function dms(deg){deg=((deg%360)+360)%360;let d=Math.floor(deg),mf=(deg-d)*60,mm=Math.floor(mf),s=(mf-mm)*60;if(s>=59.95){s=0;mm++}if(mm>=60){mm=0;d++}return `${d}° ${String(mm).padStart(2,'0')}′ ${s.toFixed(1).padStart(4,'0')}″`;}
+
+
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let R=mulberry(1);const U=(a,b)=>a+(b-a)*R();function G(){let u=0;while(!u)u=R();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*R())}
+const DAYS=70,HOURS=DAYS*24,EXC=45;
+const MOVE={2:8.5,3:12,4:4},STEP={5:[58,3]};
+let W=null,P=null;
+function weather(){R=mulberry(3);const t=[],hour=[],air=[],sun=[];let walk=0;const rainy=[];for(let d=0;d<DAYS;d++)rainy.push(R()<0.3);
+ for(let k=0;k<HOURS;k++){const h=k%24,d=Math.floor(k/24);walk+=0.6*G()*0.05;const amp=rainy[d]?1.5:3.8;
+  t.push(k/24);hour.push(h);air.push(28.5+amp*Math.sin(2*Math.PI*(h-9)/24)+walk-(rainy[d]?1:0));sun.push(Math.max(0,Math.sin(Math.PI*(h-7)/12))*(rainy[d]?0:1))}
+ return {t,hour,air,sun}}
+function prisms(){R=mulberry(4);const out=[];for(let i=0;i<8;i++)out.push({a:U(0.15,0.45),b:U(0.3,1.2),lag:1+Math.floor(R()*3),s:U(0.5,2)});return out}
+function trueMove(t,i,sc){let m=0;if(MOVE[i]!==undefined)m=-sc*MOVE[i]*(1-Math.exp(-Math.max(0,t-EXC)/9));if(STEP[i]&&t>=STEP[i][0])m-=sc*STEP[i][1];return m}
+function readings(th,nz,mv){W=weather();P=prisms();R=mulberry(5);const Z=[];
+ P.forEach((p,i)=>{const z=new Float64Array(HOURS);
+  for(let k=0;k<HOURS;k++){const Ts=W.air[(k-p.lag+HOURS)%HOURS]+6*W.sun[k]*p.s/2;const resp=p.a*(Ts-28.5)+p.b*Math.max(0,Ts-33);
+   z[k]=th*resp+nz*(0.25+0.6*W.sun[k])*G()+trueMove(W.t[k],i,mv);if(R()<0.006)z[k]+=(R()<0.5?-1:1)*U(5,12)}
+  Z.push(z)});return Z}
+function design(k){const a=j=>W.air[(k-j+HOURS)%HOURS];return [a(0),a(1),a(2),a(3),a(4),Math.sin(2*Math.PI*W.hour[k]/24),Math.cos(2*Math.PI*W.hour[k]/24)]}
+function gaussSolve(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);for(let i=0;i<n;i++){let p=i;for(let k=i+1;k<n;k++)if(Math.abs(M[k][i])>Math.abs(M[p][i]))p=k;[M[i],M[p]]=[M[p],M[i]];
+ for(let k=i+1;k<n;k++){const f=M[k][i]/M[i][i];for(let j=i;j<=n;j++)M[k][j]-=f*M[i][j]}}const x=new Array(n).fill(0);for(let i=n-1;i>=0;i--){let s=M[i][n];for(let j=i+1;j<n;j++)s-=M[i][j]*x[j];x[i]=s/M[i][i]}return x}
+function fitLS(X,y){const d=X[0].length+1,N=[...Array(d)].map(()=>new Array(d).fill(0)),b=new Array(d).fill(0);
+ X.forEach((x,i)=>{const a=[1,...x];for(let p=0;p<d;p++){b[p]+=a[p]*y[i];for(let q=0;q<d;q++)N[p][q]+=a[p]*a[q]}});for(let p=0;p<d;p++)N[p][p]+=1e-6;
+ const w=gaussSolve(N,b);return x=>{let s=w[0];for(let j=0;j<x.length;j++)s+=w[j+1]*x[j];return s}}
+function fitNN(X,y,seed){const rng=mulberry(seed),d=X[0].length,H=16,n=X.length;
+ const mu=[...Array(d)].map((_,j)=>X.reduce((s,x)=>s+x[j],0)/n),sd=mu.map((m,j)=>Math.sqrt(X.reduce((s,x)=>s+(x[j]-m)**2,0)/n)||1);
+ const ym=y.reduce((a,b)=>a+b,0)/n,ys=Math.sqrt(y.reduce((s,v)=>s+(v-ym)**2,0)/n)||1;
+ const Xs=X.map(x=>x.map((v,j)=>(v-mu[j])/sd[j])),Ys=y.map(v=>(v-ym)/ys);
+ const g=()=>{let u=0;while(!u)u=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rng())};
+ const W1=new Float64Array(H*d).map(()=>g()*Math.sqrt(1/d)),b1=new Float64Array(H),W2=new Float64Array(H).map(()=>g()*Math.sqrt(1/H)),b2=new Float64Array(1);
+ const Pm=[W1,b1,W2,b2],M=Pm.map(a=>new Float64Array(a.length)),V=Pm.map(a=>new Float64Array(a.length));const h=new Float64Array(H);
+ // robust: down-weight wild readings (Huber-type) so that outliers do not shape the normal
+ for(let st=1;st<=3000;st++){const Gr=Pm.map(a=>new Float64Array(a.length));
+  for(let bb=0;bb<32;bb++){const i=Math.floor(rng()*n),x=Xs[i];let o=b2[0];
+   for(let a=0;a<H;a++){let s=b1[a];for(let j=0;j<d;j++)s+=W1[a*d+j]*x[j];h[a]=Math.tanh(s);o+=W2[a]*h[a]}
+   let e=o-Ys[i];e=Math.max(-1.5,Math.min(1.5,e));Gr[3][0]+=e;
+   for(let a=0;a<H;a++){Gr[2][a]+=e*h[a];const dh=e*W2[a]*(1-h[a]*h[a]);Gr[1][a]+=dh;for(let j=0;j<d;j++)Gr[0][a*d+j]+=dh*x[j]}}
+  const lr=st<2000?0.01:0.003;
+  for(let p=0;p<4;p++)for(let k=0;k<Pm[p].length;k++){const gg=Gr[p][k]/32+(p%2===0?1e-4*Pm[p][k]:0);M[p][k]=0.9*M[p][k]+0.1*gg;V[p][k]=0.999*V[p][k]+0.001*gg*gg;Pm[p][k]-=lr*(M[p][k]/(1-0.9**st))/(Math.sqrt(V[p][k]/(1-0.999**st))+1e-8)}}
+ return x=>{const xs=x.map((v,j)=>(v-mu[j])/sd[j]);let o=b2[0];for(let a=0;a<H;a++){let s=b1[a];for(let j=0;j<d;j++)s+=W1[a*d+j]*xs[j];o+=W2[a]*Math.tanh(s)}return o*ys+ym}}
+function runMed(r,w=6){const out=new Float64Array(r.length);for(let k=0;k<r.length;k++){const s=Array.from(r.slice(Math.max(0,k-w+1),k+1)).sort((a,b)=>a-b);out[k]=s[Math.floor(s.length/2)]}return out}
+function daily(z){const out=new Float64Array(z.length);let s=0;for(let k=0;k<z.length;k++){s+=z[k];if(k>=24)s-=z[k-24];out[k]=s/Math.min(k+1,24)}return out}
+function firstCross(s,lv){for(let k=0;k<s.length;k++)if(s[k]<=lv)return k;return null}
+function stepFlag(s,sd,bd){// sudden drop: 6-h median falls more than 4 sigma below the median of the previous 24 h, after the learning period
+ for(let k=bd*24+30;k<s.length;k++){const prev=Array.from(s.slice(k-30,k-6)).sort((a,b)=>a-b)[12];if(s[k]<prev-Math.max(4*sd,1.5)){return k}}return null}
+
+let res=null;
+const busy=(on,m)=>{$('#busy').style.display=on?'block':'none';if(m)$('#busy').textContent=m};
+['th','nz','mv','bd'].forEach(id=>{$('#'+id).oninput=()=>$('#'+id+'V').textContent=(+$('#'+id).value).toFixed(id==='bd'?0:1)});
+$('#prism').innerHTML=[...Array(8)].map((_,i)=>`<option value="${i}" ${i===3?'selected':''}>Prism ${i+1}${MOVE[i]!==undefined?' (settles)':STEP[i]?' (sudden step)':''}</option>`).join('');
+$('#prism').onchange=()=>res&&show();
+function run(){busy(true,'Learning each prism\'s normal…');setTimeout(()=>{
+ const th=+$('#th').value,nz=+$('#nz').value,mv=+$('#mv').value,bd=+$('#bd').value,method=$('#method').value,AL=+$('#al').value,WSL=+$('#wsl').value;
+ const Z=readings(th,nz,mv);const X=[...Array(HOURS)].map((_,k)=>design(k));const base=[];for(let k=0;k<bd*24;k++)base.push(k);
+ const out=[];
+ Z.forEach((z,i)=>{const fx=method==='ls'?fitLS(base.map(k=>X[k]),base.map(k=>z[k])):fitNN(base.map(k=>X[k]),base.map(k=>z[k]),11+i);
+  const norm=new Float64Array(HOURS);for(let k=0;k<HOURS;k++)norm[k]=fx(X[k]);const r=new Float64Array(HOURS);for(let k=0;k<HOURS;k++)r[k]=z[k]-norm[k];
+  const tr=runMed(r);const bs=Array.from(tr.slice(24,bd*24));const m=bs.reduce((a,b)=>a+b,0)/bs.length,sd=Math.sqrt(bs.reduce((s,v)=>s+(v-m)**2,0)/bs.length);
+  const tm=new Float64Array(HOURS);for(let k=0;k<HOURS;k++)tm[k]=trueMove(W.t[k],i,mv);
+  const dm=daily(z);
+  out.push({z,norm,tr,tm,sd,dm,cross:{tru:firstCross(tm,AL),raw:firstCross(z,AL),day:firstCross(dm,AL),ai:firstCross(tr,AL),aiW:firstCross(tr,WSL),truW:firstCross(tm,WSL)},
+   falseRaw:Array.from(z).filter((v,k)=>v<=AL&&tm[k]>AL).length,falseAI:Array.from(tr).filter((v,k)=>v<=AL&&tm[k]>AL+1).length,step:stepFlag(tr,sd,bd)})});
+ res={out,AL,WSL,bd,method};show();table();busy(false);
+ window.lastResult={sd:out.map(o=>+o.sd.toFixed(2)),cross:out.map(o=>o.cross),falseRaw:out.reduce((s,o)=>s+o.falseRaw,0),falseAI:out.reduce((s,o)=>s+o.falseAI,0),step:out.map(o=>o.step)}},30)}
+$('#run').onclick=run;
+const dayOf=k=>k===null?'—':(k/24).toFixed(1);
+function table(){const {out}=res;let h='<tr><th>Prism</th><th>True</th><th>Raw reading</th><th>Daily mean</th><th>AI</th><th>Step</th><th>Scatter (mm)</th></tr>';
+ out.forEach((o,i)=>{const c=o.cross;const cls=k=>k===null?'':(c.tru===null||k<c.tru-24)?'hit':'good';
+  h+=`<tr><td>${i+1}</td><td>${dayOf(c.tru)}</td><td class="${cls(c.raw)}">${dayOf(c.raw)}</td><td class="${cls(c.day)}">${dayOf(c.day)}</td><td class="${cls(c.ai)}">${dayOf(c.ai)}</td><td class="${o.step===null?'':(o.tm[o.step]<-0.3?'good':'hit')}">${dayOf(o.step)}</td><td>${o.sd.toFixed(2)}</td></tr>`});
+ $('#tbl').innerHTML=h}
+function show(){const i=+$('#prism').value,o=res.out[i];const step=3;const T=W.t;
+ const pick=a=>{const p=[];for(let k=0;k<HOURS;k+=1)p.push([T[k],a[k]]);return p};
+ const st=(k,v,c)=>`<div class="stat ${c||''}"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+ const c=o.cross;
+ $('#stats').innerHTML=st('Raw readings beyond Alert Level with no real movement',o.falseRaw,o.falseRaw?'warn':'ok')+st('Scatter after learning the normal',o.sd.toFixed(2)+' mm')+
+  st('True Alert Level crossing',c.tru===null?'none':'day '+dayOf(c.tru))+st('AI Alert Level crossing',c.ai===null?'none':'day '+dayOf(c.ai),(c.ai!==null&&(c.tru===null||c.ai<c.tru-24))?'warn':'ok');
+ plot($('#ts'),[{pts:pick(o.z),type:'scatter',r:0.9,color:'#9aa3ab',fill:'#9aa3ab',label:'raw readings'},{pts:pick(o.tr),type:'line',w:1.6,color:'#2e75b6',label:'AI: reading minus learned normal'},
+  {pts:pick(o.tm),type:'line',w:1.4,dash:'6 4',color:'#1d2329',label:'true movement'}],
+  {xlabel:'Day',ylabel:'Height change (mm)',h:340,ymin:Math.min(res.WSL-3,...Array.from(o.tr).slice(24)),ymax:Math.max(8,...Array.from(o.z)),
+   hlines:[{y:res.AL,label:'Alert Level',dash:'4 3',color:'#e0a030'},{y:res.WSL,label:'Work Suspension Level',dash:'4 3',color:'#a23b2a'}],vlines:[{x:res.bd,label:'end of learning'},{x:EXC,label:'excavation'}]});
+ const pts=[],pr=[];for(let k=0;k<res.bd*24;k+=1){pts.push([W.air[k],o.z[k]]);pr.push([W.air[k],o.norm[k]])}
+ plot($('#loop'),[{pts,type:'scatter',r:1.4,color:'#9aa3ab',fill:'#9aa3ab',label:'readings'},{pts:pr,type:'scatter',r:1.4,color:'#e07b39',fill:'#e07b39',label:'learned normal'}],
+  {xlabel:'Site air temperature (°C)',ylabel:'Reading (mm)',h:280,ymin:-8,ymax:10})}
+run();
+
+</script></body></html>
